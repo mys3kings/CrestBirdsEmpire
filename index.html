@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bird Empire Clone</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+<style>
+body { font-family: Arial; text-align:center; background:#e0f7fa; }
+h1 { color:#00796b; }
+#coinDisplay { font-size:2em; margin:20px; }
+button { padding:15px 30px; font-size:1.2em; margin:10px; cursor:pointer; border:none; border-radius:5px; }
+#adButton { background-color:#ffca28; }
+</style>
+</head>
+<body>
+
+<h1>Bird Empire Mini-App</h1>
+<p id="coinDisplay">Coins: 0</p>
+<button id="tapButton">Tap to Collect Coins</button><br>
+<button id="dailyRewardButton">Daily Reward</button><br>
+<button id="adButton">Watch Ad for Coins</button><br>
+<input type="text" id="refInput" placeholder="Referral ID"><button id="refButton">Submit Referral</button>
+
+<script>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+// 🔹 Firebase setup
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// 🔹 Telegram Web App API
+const tg = window.Telegram.WebApp;
+const userId = tg.initDataUnsafe.user.id; // Telegram user id
+
+let coins = 0;
+
+// Load user from Firebase or create
+async function loadUser() {
+  const dbRef = ref(db);
+  const snapshot = await get(child(dbRef, `users/${userId}`));
+  if (snapshot.exists()) {
+    coins = snapshot.val().coins || 0;
+    updateDisplay();
+  } else {
+    await set(ref(db, `users/${userId}`), { coins: 0, lastDaily: 0, referrer: null });
+    coins = 0;
+    updateDisplay();
+  }
+}
+
+loadUser();
+
+// Update display
+function updateDisplay() { document.getElementById('coinDisplay').innerText = `Coins: ${coins}`; }
+
+// 🔹 Tap to collect coins
+document.getElementById('tapButton').onclick = async () => {
+  coins += 1;
+  await update(ref(db, `users/${userId}`), { coins });
+  updateDisplay();
+};
+
+// 🔹 Daily reward
+document.getElementById('dailyRewardButton').onclick = async () => {
+  const snapshot = await get(ref(db, `users/${userId}/lastDaily`));
+  const lastDaily = snapshot.exists() ? snapshot.val() : 0;
+  const now = Date.now();
+  if (now - lastDaily > 24*60*60*1000) {
+    coins += 50;
+    await update(ref(db, `users/${userId}`), { coins, lastDaily: now });
+    alert("Daily reward +50 coins!");
+    updateDisplay();
+  } else { alert("Daily reward already claimed!"); }
+};
+
+// 🔹 Placeholder for rewarded ad
+document.getElementById('adButton').onclick = async () => {
+  coins += 10; // temporary demo reward
+  await update(ref(db, `users/${userId}`), { coins });
+  alert("Thanks for watching the ad! +10 coins");
+  updateDisplay();
+};
+
+// 🔹 Referral system
+document.getElementById('refButton').onclick = async () => {
+  const refId = document.getElementById('refInput').value;
+  if (!refId || refId == userId) { alert("Invalid referral ID"); return; }
+  await update(ref(db, `users/${userId}`), { referrer: refId });
+  alert("Referral linked!");  
+};
+</script>
+
+</body>
+</html>
