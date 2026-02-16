@@ -2,10 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Bird Empire Clone</title>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+<title>Bird Empire Mini-App</title>
 <style>
 body { font-family: Arial; text-align:center; background:#e0f7fa; }
 h1 { color:#00796b; }
@@ -23,82 +20,51 @@ button { padding:15px 30px; font-size:1.2em; margin:10px; cursor:pointer; border
 <button id="adButton">Watch Ad for Coins</button><br>
 <input type="text" id="refInput" placeholder="Referral ID"><button id="refButton">Submit Referral</button>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getDatabase, ref, set, get, child, update } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+<script>
+let coins = parseInt(localStorage.getItem('coins')) || 0;
+let lastDaily = parseInt(localStorage.getItem('lastDaily')) || 0;
 
-// 🔹 Firebase setup
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-// 🔹 Telegram Web App API
-const tg = window.Telegram.WebApp;
-const userId = tg.initDataUnsafe.user.id; // Telegram user id
-
-let coins = 0;
-
-// Load user from Firebase or create
-async function loadUser() {
-  const dbRef = ref(db);
-  const snapshot = await get(child(dbRef, `users/${userId}`));
-  if (snapshot.exists()) {
-    coins = snapshot.val().coins || 0;
-    updateDisplay();
-  } else {
-    await set(ref(db, `users/${userId}`), { coins: 0, lastDaily: 0, referrer: null });
-    coins = 0;
-    updateDisplay();
-  }
+function updateDisplay() {
+  document.getElementById('coinDisplay').innerText = `Coins: ${coins}`;
 }
 
-loadUser();
+updateDisplay();
 
-// Update display
-function updateDisplay() { document.getElementById('coinDisplay').innerText = `Coins: ${coins}`; }
-
-// 🔹 Tap to collect coins
-document.getElementById('tapButton').onclick = async () => {
+// Tap button
+document.getElementById('tapButton').onclick = () => {
   coins += 1;
-  await update(ref(db, `users/${userId}`), { coins });
+  localStorage.setItem('coins', coins);
   updateDisplay();
 };
 
-// 🔹 Daily reward
-document.getElementById('dailyRewardButton').onclick = async () => {
-  const snapshot = await get(ref(db, `users/${userId}/lastDaily`));
-  const lastDaily = snapshot.exists() ? snapshot.val() : 0;
+// Daily reward
+document.getElementById('dailyRewardButton').onclick = () => {
   const now = Date.now();
   if (now - lastDaily > 24*60*60*1000) {
     coins += 50;
-    await update(ref(db, `users/${userId}`), { coins, lastDaily: now });
+    lastDaily = now;
+    localStorage.setItem('coins', coins);
+    localStorage.setItem('lastDaily', lastDaily);
     alert("Daily reward +50 coins!");
     updateDisplay();
-  } else { alert("Daily reward already claimed!"); }
+  } else {
+    alert("Daily reward already claimed!");
+  }
 };
 
-// 🔹 Placeholder for rewarded ad
-document.getElementById('adButton').onclick = async () => {
-  coins += 10; // temporary demo reward
-  await update(ref(db, `users/${userId}`), { coins });
+// Watch Ad (placeholder)
+document.getElementById('adButton').onclick = () => {
+  coins += 10;
+  localStorage.setItem('coins', coins);
   alert("Thanks for watching the ad! +10 coins");
   updateDisplay();
 };
 
-// 🔹 Referral system
-document.getElementById('refButton').onclick = async () => {
-  const refId = document.getElementById('refInput').value;
-  if (!refId || refId == userId) { alert("Invalid referral ID"); return; }
-  await update(ref(db, `users/${userId}`), { referrer: refId });
-  alert("Referral linked!");  
+// Referral input (local only)
+document.getElementById('refButton').onclick = () => {
+  const ref = document.getElementById('refInput').value;
+  if(ref && ref != "") alert(`Referral ${ref} submitted!`);
+  else alert("Enter a valid referral ID");
 };
 </script>
 
